@@ -8,77 +8,55 @@
 import SwiftUI
 import PhotosUI
 
+enum PhotoPickerError: Error {
+    case failedToLoadImageData
+    case failedToConvertDataToImage
+    // Add more error cases as needed
+}
+
 struct PhotoPickerView: View {
-    @State private var selectedImage: UIImage? = nil
-    @State private var isImagePickerPresented: Bool = false
+    @State private var selectedItems:[PhotosPickerItem] = []
+    @State private var selectedImages: [UIImage] = []
+
 
     var body: some View {
         VStack {
-            if let image = selectedImage {
-                // Display selected image
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding()
-            } else {
-                Button("Pick a Photo") {
-                    isImagePickerPresented.toggle()
-                }
-                .padding()
-                .sheet(isPresented: $isImagePickerPresented) {
-                    // Present the PhotoPicker sheet
-                    PhotoPicker(selectedImage: $selectedImage, isImagePickerPresented: $isImagePickerPresented)
-                }
-            }
-        }
-    }
-}
-
-struct PhotoPicker: UIViewControllerRepresentable {
-    @Binding var selectedImage: UIImage?
-    @Binding var isImagePickerPresented: Bool // Binding to control the presentation of the sheet
-
-    // Create and configure the PHPickerViewController
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var configuration = PHPickerConfiguration()
-        configuration.filter = .images
-        let picker = PHPickerViewController(configuration: configuration)
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    // Update the PHPickerViewController
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-
-    // Create the coordinator to handle PHPickerViewControllerDelegate methods
-    func makeCoordinator() -> Coordinator {
-        return Coordinator(parent: self)
-    }
-
-    class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        var parent: PhotoPicker
-
-        init(parent: PhotoPicker) {
-            self.parent = parent
-        }
-        
-        // Called when the user finishes picking photos
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            if let selectedItem = results.first {
-                // Load the selected image
-                selectedItem.itemProvider.loadObject(ofClass: UIImage.self) { (image, error) in
-                    if let image = image as? UIImage {
-                        // Update the selected image on the main thread
-                        DispatchQueue.main.async {
-                            self.parent.selectedImage = image
-                        }
+            if !selectedImages.isEmpty {
+                ScrollView(showsIndicators: false) {
+                    ForEach(selectedImages, id: \.self) {image in
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 300, height: 300)
                     }
                 }
-            } else {
-                parent.selectedImage = nil
+                .frame(width: 300, height: 500)
             }
+            
+            PhotosPicker(selection: $selectedItems, matching: .images) {
+                Label("Pick Photos", systemImage: "photo.fill.on.rectangle.fill")
+            }
+        }
+        .onChange(of: selectedItems) { newItems in
+            newItems.forEach { item in
+                // Clear the earlier selected images, so that only fresh selection is shown
+                selectedImages = []
+                Task {
+                    do {
+                        guard let data = try? await item.loadTransferable(type: Data.self) else {
+                            throw PhotoPickerError.failedToLoadImageData
+                        }
+                        guard let image = UIImage(data: data) else {
+                            throw PhotoPickerError.failedToConvertDataToImage
+                        }
+                        selectedImages.append(image)
+                    }catch {
+                        // Handle error
+                        print("Error loading image \(error)")
+                    }
 
-            parent.isImagePickerPresented = false
+                }
+            }
         }
     }
 }

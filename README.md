@@ -1,6 +1,6 @@
 # PhotoPicker App
 
-The PhotoPicker app is a simple iOS application built using SwiftUI that allows users to pick a photo from their device's photo library. It utilizes the `PHPickerViewController` to facilitate photo selection.
+The PhotoPicker app is a simple iOS application built using SwiftUI that allows users to pick a photo from their device's photo library.We also explore how to retrieve a SwiftUI image by using Transferable — a new SwiftUI protocol you use to move data.
 
 ## Features
 
@@ -9,8 +9,8 @@ The PhotoPicker app is a simple iOS application built using SwiftUI that allows 
 
 ## Requirements
 
-- Xcode 13.0 or later
-- iOS 15.0 or later
+- Xcode 14.0 or later
+- iOS 16.0 or later
 
 ## Getting Started
 
